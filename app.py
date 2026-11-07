@@ -30,6 +30,10 @@ os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
 app.config["MAX_CONTENT_LENGTH"] = 16 * 1024 * 1024  # 16 MB max request limit
 
+# Initialize DB and APScheduler on module load (ensures support for both python app.py and gunicorn)
+db.init_db()
+scheduler.init_scheduler()
+
 
 @app.context_processor
 def inject_global_data():
