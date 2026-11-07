@@ -1,0 +1,27 @@
+# Environment variables and secrets
+.env
+
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Database
+*.db
+*.sqlite3
+
+# Uploaded resumes / files
+uploads/*
+!uploads/.gitkeep
+!uploads/*.pdf
+
+# Virtual environment
+venv/
+env/
+.venv/
+
+# OS metadata
+.DS_Store
+Thumbs.db
+

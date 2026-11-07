@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}HR Cold Mailer{% endblock %}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <!-- Top Navigation Bar -->
+    <header class="navbar">
+        <a href="{{ url_for('dashboard') }}" class="nav-brand">
+            <span class="brand-badge">HR Mailer</span>
+            <span>Cold Outreach</span>
+        </a>
+
+        <ul class="nav-links">
+            <li><a href="{{ url_for('dashboard') }}" class="{% if request.endpoint == 'dashboard' %}active{% endif %}">Dashboard</a></li>
+            <li><a href="{{ url_for('upload_page') }}" class="{% if request.endpoint == 'upload_page' %}active{% endif %}">Upload & CSV</a></li>
+            <li><a href="{{ url_for('templates_page') }}" class="{% if request.endpoint == 'templates_page' %}active{% endif %}">Templates & Config</a></li>
+            <li><a href="{{ url_for('preview_page') }}" class="{% if request.endpoint == 'preview_page' %}active{% endif %}">Preview Mail</a></li>
+            <li><a href="{{ url_for('scheduler_page') }}" class="{% if request.endpoint == 'scheduler_page' %}active{% endif %}">Scheduler</a></li>
+        </ul>
+
+        <div class="nav-actions">
+            <!-- Dry Run Toggle -->
+            <label class="toggle-wrapper" title="In Dry-Run mode, all templates and attachments are validated but no SMTP emails are sent">
+                <span style="font-size: 0.85rem; font-weight: 600; color: {% if is_dry_run %}var(--info){% else %}var(--text-muted){% endif %};">
+                    Dry Run: {% if is_dry_run %}ON{% else %}OFF{% endif %}
+                </span>
+                <div class="toggle-switch">
+                    <input type="checkbox" onchange="toggleDryRun(this)" {% if is_dry_run %}checked{% endif %}>
+                    <span class="slider"></span>
+                </div>
+            </label>
+
+            <!-- Test to Myself Button -->
+            <button id="btn-test-mail" class="btn btn-outline btn-sm" onclick="sendTestEmail()" title="Send 1 test mail to danishsjain@gmail.com">
+                <span>✉️</span> Send Test to Myself
+            </button>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="container">
+        <!-- Flash Messages -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                <div style="margin-bottom: 1.25rem;">
+                    {% for category, message in messages %}
+                        <div class="alert alert-{{ category }}">
+                            <span>{{ message }}</span>
+                        </div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        {% endwith %}
+
+        {% block content %}{% endblock %}
+    </main>
+
+    <!-- Global Toast Container -->
+    <div id="toast"></div>
+
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+    {% block scripts %}{% endblock %}
+</body>
+</html>
+

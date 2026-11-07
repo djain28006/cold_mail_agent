@@ -1,0 +1,239 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - HR Cold Mailer{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Outreach Dashboard</h1>
+        <p class="page-subtitle">Track your HR outreach queue, email deliveries, and follow-ups.</p>
+    </div>
+    <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+        <a href="{{ url_for('upload_page') }}" class="btn btn-primary btn-sm">+ Import CSV / Upload Resume</a>
+        <a href="{{ url_for('preview_page') }}" class="btn btn-outline btn-sm">Preview Emails</a>
+        <a href="{{ url_for('export_csv_route') }}" class="btn btn-outline btn-sm" title="Download spreadsheet report of contacts and delivery statuses">⬇ Export Report (CSV)</a>
+    </div>
+</div>
+
+<!-- Stats Counter Grid -->
+<div class="stats-grid">
+    <div class="stat-card">
+        <span class="label">Total Contacts</span>
+        <span class="value">{{ stats.total }}</span>
+    </div>
+    <div class="stat-card">
+        <span class="label">Today's Cap</span>
+        <span class="value" id="sent-today-count" style="font-size: 1.4rem; padding-top: 0.35rem;">{{ stats.sent_today }} / {{ stats.daily_cap }}</span>
+    </div>
+    <div class="stat-card sent">
+        <span class="label">Sent Successfully</span>
+        <span class="value">{{ stats.sent }}</span>
+    </div>
+    <div class="stat-card pending">
+        <span class="label">Pending Outreach</span>
+        <span class="value">{{ stats.pending }}</span>
+    </div>
+    <div class="stat-card failed">
+        <span class="label">Failed</span>
+        <span class="value">{{ stats.failed }}</span>
+    </div>
+    <div class="stat-card followup">
+        <span class="label">Follow-up Due</span>
+        <span class="value">{{ stats.follow_up_due }}</span>
+    </div>
+</div>
+
+<!-- Send Queue Control Panel -->
+<div class="queue-panel">
+    <div class="queue-header">
+        <div class="queue-title-area">
+            <span id="queue-status-indicator" class="status-indicator"></span>
+            <div>
+                <strong id="queue-status-text" style="font-size: 1.05rem;">Idle</strong>
+                <span id="queue-message-text" style="color: var(--text-muted); font-size: 0.9rem; margin-left: 0.5rem;">Queue ready.</span>
+            </div>
+        </div>
+        <div style="display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap;">
+            <button id="btn-start-queue" class="btn btn-success btn-sm" onclick="startQueue('initial')">
+                ▶ Start Initial Outreach
+            </button>
+            {% if stats.follow_up_due > 0 %}
+            <button class="btn btn-warning btn-sm" onclick="startQueue('follow_up')">
+                ✉ Send Due Follow-ups ({{ stats.follow_up_due }})
+            </button>
+            {% endif %}
+            <button id="btn-stop-queue" class="btn btn-danger btn-sm" onclick="stopQueue()" disabled>
+                ⏹ Stop Queue
+            </button>
+            {% if stats.failed > 0 %}
+            <button class="btn btn-outline btn-sm" onclick="retryFailedContacts()" title="Reset all failed contacts back to pending">
+                🔄 Retry Failed ({{ stats.failed }})
+            </button>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Live Progress Bar -->
+    <div class="progress-container">
+        <div class="progress-bar-bg">
+            <div id="queue-progress-bar" class="progress-bar-fill"></div>
+        </div>
+        <div class="progress-labels">
+            <span>Progress (30–90s random delay between mails):</span>
+            <span id="queue-progress-count">0 / 0</span>
+        </div>
+    </div>
+</div>
+
+<!-- Contacts Table Card -->
+<div class="card">
+    <div class="card-header">
+        <div style="display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; width: 100%;">
+            <span class="card-title">Recipients List ({{ contacts|length }})</span>
+
+            <!-- Filter Tabs -->
+            <div style="display: flex; gap: 0.25rem; margin-left: auto; flex-wrap: wrap;">
+                <a href="{{ url_for('dashboard') }}" class="btn btn-sm {% if not current_filter %}btn-primary{% else %}btn-outline{% endif %}">All</a>
+                <a href="{{ url_for('dashboard', status='pending') }}" class="btn btn-sm {% if current_filter == 'pending' %}btn-primary{% else %}btn-outline{% endif %}">Pending</a>
+                <a href="{{ url_for('dashboard', status='sent') }}" class="btn btn-sm {% if current_filter == 'sent' %}btn-primary{% else %}btn-outline{% endif %}">Sent</a>
+                <a href="{{ url_for('dashboard', status='failed') }}" class="btn btn-sm {% if current_filter == 'failed' %}btn-primary{% else %}btn-outline{% endif %}">Failed</a>
+                <a href="{{ url_for('dashboard', status='follow_up_due') }}" class="btn btn-sm {% if current_filter == 'follow_up_due' %}btn-primary{% else %}btn-outline{% endif %}">Follow-up Due</a>
+                <a href="{{ url_for('dashboard', status='replied') }}" class="btn btn-sm {% if current_filter == 'replied' %}btn-primary{% else %}btn-outline{% endif %}">Replied</a>
+                <a href="{{ url_for('dashboard', status='do_not_contact') }}" class="btn btn-sm {% if current_filter == 'do_not_contact' %}btn-primary{% else %}btn-outline{% endif %}">Do Not Contact</a>
+            </div>
+
+            <!-- Search input -->
+            <div style="width: 220px;">
+                <input type="text" id="search-input" class="form-control" style="padding: 0.35rem 0.65rem; font-size: 0.85rem;" placeholder="Search table..." onkeyup="filterContactsTable()">
+            </div>
+        </div>
+    </div>
+
+    <div class="table-responsive">
+        <table id="contacts-table">
+            <thead>
+                <tr>
+                    <th>HR Contact</th>
+                    <th>Company</th>
+                    <th>Initial Outreach</th>
+                    <th>Sent At</th>
+                    <th>Follow-up</th>
+                    <th>Replied</th>
+                    <th>Do Not Contact</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% if contacts %}
+                    {% for c in contacts %}
+                    <tr id="contact-row-{{ c.id }}">
+                        <td>
+                            <strong>{{ c.name or 'Unknown' }}</strong><br>
+                            <span style="color: var(--text-muted); font-size: 0.85rem;">{{ c.email }}</span>
+                        </td>
+                        <td><strong>{{ c.company or '-' }}</strong></td>
+                        <td>
+                            <span class="badge badge-{{ c.status }}" 
+                                  {% if c.error %}
+                                  style="cursor:pointer;" 
+                                  onclick="openModal('Delivery Error for {{ c.email }}', '<div class=\'alert alert-danger\'>{{ c.error | replace('\'', '\\\'') }}</div>')" 
+                                  title="Click to view error details"
+                                  {% endif %}>
+                                {{ c.status }} {% if c.error %}⚠️{% endif %}
+                            </span>
+                        </td>
+                        <td style="font-size: 0.85rem; color: var(--text-muted);">
+                            {{ c.sent_at or '-' }}
+                        </td>
+                        <td>
+                            <span class="badge badge-{{ c.follow_up_status or 'pending' }}"
+                                  {% if c.follow_up_error %}
+                                  style="cursor:pointer;"
+                                  onclick="openModal('Follow-up Error', '<div class=\'alert alert-danger\'>{{ c.follow_up_error | replace('\'', '\\\'') }}</div>')"
+                                  {% endif %}>
+                                {{ c.follow_up_status or 'pending' }}
+                            </span>
+                            {% if c.follow_up_sent_at %}
+                            <br><span style="font-size: 0.75rem; color: var(--text-muted);">{{ c.follow_up_sent_at }}</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <input type="checkbox" onchange="toggleContactFlag({{ c.id }}, 'replied', this.checked)" {% if c.replied %}checked{% endif %} title="Mark if candidate received reply">
+                        </td>
+                        <td>
+                            <input type="checkbox" onchange="toggleContactFlag({{ c.id }}, 'do_not_contact', this.checked)" {% if c.do_not_contact %}checked{% endif %} title="Skip in all future queues">
+                        </td>
+                        <td>
+                            <div style="display: flex; gap: 0.35rem;">
+                                <a href="{{ url_for('preview_page', contact_id=c.id) }}" class="btn btn-outline btn-sm" title="Preview rendered email">
+                                    👁️
+                                </a>
+                                {% if c.status != 'sent' %}
+                                <button class="btn btn-outline btn-sm" onclick="sendContactNow({{ c.id }})" title="Send now to this contact">
+                                    🚀
+                                </button>
+                                {% endif %}
+                                <button class="btn btn-outline btn-sm" onclick="deleteContact({{ c.id }})" title="Delete" style="color: var(--danger);">
+                                    🗑️
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                {% else %}
+                    <tr>
+                        <td colspan="8" style="text-align: center; padding: 2.5rem; color: var(--text-muted);">
+                            No contacts found. <a href="{{ url_for('upload_page') }}">Upload an HR CSV</a> to start sending.
+                        </td>
+                    </tr>
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Recent Activity / Logs Card -->
+<div class="card">
+    <div class="card-header">
+        <span class="card-title">Recent Activity Logs</span>
+        <form method="POST" action="{{ url_for('clear_logs_route') }}" onsubmit="return confirm('Clear activity logs?');">
+            <button type="submit" class="btn btn-outline btn-sm">Clear Logs</button>
+        </form>
+    </div>
+    <div class="card-body" style="padding: 0;">
+        <div class="table-responsive" style="max-height: 280px; overflow-y: auto;">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Time</th>
+                        <th>Type</th>
+                        <th>Recipient</th>
+                        <th>Status</th>
+                        <th>Message</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% if logs %}
+                        {% for log in logs %}
+                        <tr>
+                            <td style="font-size: 0.8rem; color: var(--text-muted); white-space: nowrap;">{{ log.timestamp }}</td>
+                            <td><span class="badge badge-secondary">{{ log.email_type }}</span></td>
+                            <td style="font-size: 0.85rem;">{{ log.recipient_email }}</td>
+                            <td><span class="badge badge-{{ log.status }}">{{ log.status }}</span></td>
+                            <td style="font-size: 0.85rem;">{{ log.message }}</td>
+                        </tr>
+                        {% endfor %}
+                    {% else %}
+                        <tr>
+                            <td colspan="5" style="text-align: center; padding: 1.5rem; color: var(--text-muted);">
+                                No recent activity logged yet.
+                            </td>
+                        </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}
+

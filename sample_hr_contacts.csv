@@ -1,0 +1,8 @@
+name,email,company
+Sarah Connor,sarah.connor@acmetech.io,Acme Tech
+Alex Morgan,alex.morgan@cloudscale.net,CloudScale Solutions
+David Miller,david.m@nextgendata.co,NextGen Data
+Duplicate Sarah,sarah.connor@acmetech.io,Acme Tech Duplicate
+Invalid Person,not-an-email,Bad Corp
+Emily Watson,emily.watson@hypergrowth.ai,HyperGrowth AI
+

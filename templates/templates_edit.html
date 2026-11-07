@@ -1,0 +1,515 @@
+{% extends "base.html" %}
+
+{% block title %}Templates & Settings - HR Cold Mailer{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Email Templates & Settings</h1>
+        <p class="page-subtitle">Customize outreach messages with rich typography, highlights, placeholders, and queue safeguards.</p>
+    </div>
+</div>
+
+<form method="POST" action="{{ url_for('save_templates_route') }}" id="templates-form">
+    <div class="row">
+        <!-- Initial Outreach Template Card -->
+        <div class="col-half">
+            <div class="card">
+                <div class="card-header">
+                    <span class="card-title">1. Initial Email Template</span>
+                    <span class="badge badge-secondary">Sent First</span>
+                </div>
+                <div class="card-body">
+                    <div class="form-group">
+                        <label class="form-label">Subject Template:</label>
+                        <input type="text" name="initial_subject" class="form-control" value="{{ initial_template.subject }}" required>
+                        <div class="form-help">Supported placeholder: <code>{company}</code></div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Email Body (Rich Visual Editor with Highlight & Fonts):</label>
+                        
+                        <!-- Rich Editor Container -->
+                        <div class="rich-editor-container" id="container-initial">
+                            <!-- Toolbar -->
+                            <div class="rich-toolbar">
+                                <!-- Font Family -->
+                                <div class="rich-group" title="Alter Base Font Family">
+                                    <span style="font-size: 0.75rem; color: #64748b; padding-left: 2px;">Font:</span>
+                                    <select class="rich-select" onchange="applyFontFamily('initial', this.value)">
+                                        <option value="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif">Modern Sans (Default)</option>
+                                        <option value="Arial, Helvetica, sans-serif">Clean Arial</option>
+                                        <option value="Georgia, 'Times New Roman', serif">Classic Georgia Serif</option>
+                                        <option value="'Merriweather', Georgia, serif">Editorial Serif</option>
+                                        <option value="'Trebuchet MS', 'Lucida Sans', sans-serif">Trebuchet MS</option>
+                                        <option value="Consolas, 'Courier New', monospace">Clean Monospace</option>
+                                    </select>
+                                </div>
+
+                                <!-- Font Size -->
+                                <div class="rich-group" title="Font Size">
+                                    <select class="rich-select" onchange="applyFontSize('initial', this.value)">
+                                        <option value="13px">13px (Small)</option>
+                                        <option value="15px" selected>15px (Normal)</option>
+                                        <option value="16px">16px (Medium)</option>
+                                        <option value="18px">18px (Prominent)</option>
+                                        <option value="20px">20px (Heading)</option>
+                                    </select>
+                                </div>
+
+                                <!-- Text Styles -->
+                                <div class="rich-group">
+                                    <button type="button" class="rich-btn" onclick="execCmd('initial', 'bold')" title="Bold (Ctrl+B)"><b>B</b></button>
+                                    <button type="button" class="rich-btn" onclick="execCmd('initial', 'italic')" title="Italic (Ctrl+I)"><i>I</i></button>
+                                    <button type="button" class="rich-btn" onclick="execCmd('initial', 'underline')" title="Underline (Ctrl+U)"><u>U</u></button>
+                                    <button type="button" class="rich-btn" onclick="execCmd('initial', 'strikeThrough')" title="Strikethrough"><s>S</s></button>
+                                </div>
+
+                                <!-- Highlighter Tool -->
+                                <div class="rich-group rich-dropdown">
+                                    <button type="button" class="rich-btn" onclick="togglePalette('hl-initial')" title="Highlight important text" style="gap: 2px;">
+                                        🖍️ Highlight
+                                    </button>
+                                    <div class="color-palette" id="hl-initial">
+                                        <div class="color-swatch" style="background-color: #fef08a;" onclick="applyHighlight('initial', '#fef08a')" title="Yellow"></div>
+                                        <div class="color-swatch" style="background-color: #bbf7d0;" onclick="applyHighlight('initial', '#bbf7d0')" title="Green"></div>
+                                        <div class="color-swatch" style="background-color: #bfdbfe;" onclick="applyHighlight('initial', '#bfdbfe')" title="Blue"></div>
+                                        <div class="color-swatch" style="background-color: #fed7aa;" onclick="applyHighlight('initial', '#fed7aa')" title="Orange"></div>
+                                        <div class="color-swatch" style="background-color: #e9d5ff;" onclick="applyHighlight('initial', '#e9d5ff')" title="Purple"></div>
+                                        <div class="color-swatch" style="background-color: #ffffff; color: #ef4444;" onclick="applyHighlight('initial', 'transparent')" title="Clear Highlight">✕</div>
+                                    </div>
+                                </div>
+
+                                <!-- Text Color Tool -->
+                                <div class="rich-group rich-dropdown">
+                                    <button type="button" class="rich-btn" onclick="togglePalette('tc-initial')" title="Text Color" style="gap: 2px;">
+                                        🎨 Color
+                                    </button>
+                                    <div class="color-palette" id="tc-initial">
+                                        <div class="color-swatch" style="background-color: #1e293b;" onclick="applyTextColor('initial', '#1e293b')" title="Dark Charcoal"></div>
+                                        <div class="color-swatch" style="background-color: #1d4ed8;" onclick="applyTextColor('initial', '#1d4ed8')" title="Navy Blue"></div>
+                                        <div class="color-swatch" style="background-color: #047857;" onclick="applyTextColor('initial', '#047857')" title="Forest Green"></div>
+                                        <div class="color-swatch" style="background-color: #b91c1c;" onclick="applyTextColor('initial', '#b91c1c')" title="Crimson Red"></div>
+                                        <div class="color-swatch" style="background-color: #64748b;" onclick="applyTextColor('initial', '#64748b')" title="Slate Gray"></div>
+                                    </div>
+                                </div>
+
+                                <!-- Lists -->
+                                <div class="rich-group">
+                                    <button type="button" class="rich-btn" onclick="execCmd('initial', 'insertUnorderedList')" title="Bullet List">• List</button>
+                                    <button type="button" class="rich-btn" onclick="execCmd('initial', 'insertOrderedList')" title="Numbered List">1. List</button>
+                                </div>
+
+                                <!-- Quick Placeholders -->
+                                <div class="rich-group">
+                                    <button type="button" class="rich-chip" onclick="insertPlaceholder('initial', '{hr_name}')" title="Insert HR Name placeholder">+ {hr_name}</button>
+                                    <button type="button" class="rich-chip" onclick="insertPlaceholder('initial', '{company}')" title="Insert Company placeholder">+ {company}</button>
+                                </div>
+
+                                <!-- Quick Opt-Out Line -->
+                                <button type="button" class="rich-btn" onclick="insertOptOut('initial')" title="Insert opt-out footer divider" style="font-size: 0.75rem; color: #64748b;">
+                                    + Opt-Out Note
+                                </button>
+
+                                <!-- Toggle HTML Source -->
+                                <button type="button" class="rich-btn" onclick="toggleSource('initial')" id="toggle-btn-initial" title="Toggle Visual / Raw HTML Code" style="margin-left: auto; font-size: 0.75rem;">
+                                    &lt;/&gt; HTML
+                                </button>
+                            </div>
+
+                            <!-- Editable Visual Area -->
+                            <div class="rich-editor-content" id="editor-initial" contenteditable="true" data-placeholder="Compose your initial cold email here..."></div>
+
+                            <!-- Raw HTML Fallback / Code View -->
+                            <textarea class="raw-html-textarea" id="raw-initial" oninput="syncFromRaw('initial')"></textarea>
+
+                            <!-- Hidden Textarea for Form POST -->
+                            <textarea name="initial_body" id="target-initial" style="display: none;">{{ initial_template.body }}</textarea>
+                        </div>
+
+                        <div class="form-help">
+                            Tip: Highlight key metrics or tech stack items in yellow or blue to make your cold email pop.
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Follow-up Template Card -->
+        <div class="col-half">
+            <div class="card">
+                <div class="card-header">
+                    <span class="card-title">2. Follow-Up Email Template</span>
+                    <span class="badge badge-secondary">Optional N-Day Follow-Up</span>
+                </div>
+                <div class="card-body">
+                    <div class="form-group">
+                        <label class="form-label">Follow-Up Subject Template:</label>
+                        <input type="text" name="follow_up_subject" class="form-control" value="{{ follow_up_template.subject }}" required>
+                        <div class="form-help">Supported placeholder: <code>{company}</code></div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Follow-Up Email Body (Rich Visual Editor):</label>
+
+                        <!-- Rich Editor Container -->
+                        <div class="rich-editor-container" id="container-follow_up">
+                            <!-- Toolbar -->
+                            <div class="rich-toolbar">
+                                <!-- Font Family -->
+                                <div class="rich-group" title="Alter Base Font Family">
+                                    <span style="font-size: 0.75rem; color: #64748b; padding-left: 2px;">Font:</span>
+                                    <select class="rich-select" onchange="applyFontFamily('follow_up', this.value)">
+                                        <option value="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif">Modern Sans (Default)</option>
+                                        <option value="Arial, Helvetica, sans-serif">Clean Arial</option>
+                                        <option value="Georgia, 'Times New Roman', serif">Classic Georgia Serif</option>
+                                        <option value="'Merriweather', Georgia, serif">Editorial Serif</option>
+                                        <option value="'Trebuchet MS', 'Lucida Sans', sans-serif">Trebuchet MS</option>
+                                        <option value="Consolas, 'Courier New', monospace">Clean Monospace</option>
+                                    </select>
+                                </div>
+
+                                <!-- Font Size -->
+                                <div class="rich-group" title="Font Size">
+                                    <select class="rich-select" onchange="applyFontSize('follow_up', this.value)">
+                                        <option value="13px">13px (Small)</option>
+                                        <option value="15px" selected>15px (Normal)</option>
+                                        <option value="16px">16px (Medium)</option>
+                                        <option value="18px">18px (Prominent)</option>
+                                    </select>
+                                </div>
+
+                                <!-- Text Styles -->
+                                <div class="rich-group">
+                                    <button type="button" class="rich-btn" onclick="execCmd('follow_up', 'bold')" title="Bold"><b>B</b></button>
+                                    <button type="button" class="rich-btn" onclick="execCmd('follow_up', 'italic')" title="Italic"><i>I</i></button>
+                                    <button type="button" class="rich-btn" onclick="execCmd('follow_up', 'underline')" title="Underline"><u>U</u></button>
+                                </div>
+
+                                <!-- Highlighter Tool -->
+                                <div class="rich-group rich-dropdown">
+                                    <button type="button" class="rich-btn" onclick="togglePalette('hl-follow_up')" title="Highlight important text" style="gap: 2px;">
+                                        🖍️ Highlight
+                                    </button>
+                                    <div class="color-palette" id="hl-follow_up">
+                                        <div class="color-swatch" style="background-color: #fef08a;" onclick="applyHighlight('follow_up', '#fef08a')" title="Yellow"></div>
+                                        <div class="color-swatch" style="background-color: #bbf7d0;" onclick="applyHighlight('follow_up', '#bbf7d0')" title="Green"></div>
+                                        <div class="color-swatch" style="background-color: #bfdbfe;" onclick="applyHighlight('follow_up', '#bfdbfe')" title="Blue"></div>
+                                        <div class="color-swatch" style="background-color: #fed7aa;" onclick="applyHighlight('follow_up', '#fed7aa')" title="Orange"></div>
+                                        <div class="color-swatch" style="background-color: #e9d5ff;" onclick="applyHighlight('follow_up', '#e9d5ff')" title="Purple"></div>
+                                        <div class="color-swatch" style="background-color: #ffffff; color: #ef4444;" onclick="applyHighlight('follow_up', 'transparent')" title="Clear Highlight">✕</div>
+                                    </div>
+                                </div>
+
+                                <!-- Text Color Tool -->
+                                <div class="rich-group rich-dropdown">
+                                    <button type="button" class="rich-btn" onclick="togglePalette('tc-follow_up')" title="Text Color" style="gap: 2px;">
+                                        🎨 Color
+                                    </button>
+                                    <div class="color-palette" id="tc-follow_up">
+                                        <div class="color-swatch" style="background-color: #1e293b;" onclick="applyTextColor('follow_up', '#1e293b')" title="Dark Charcoal"></div>
+                                        <div class="color-swatch" style="background-color: #1d4ed8;" onclick="applyTextColor('follow_up', '#1d4ed8')" title="Navy Blue"></div>
+                                        <div class="color-swatch" style="background-color: #047857;" onclick="applyTextColor('follow_up', '#047857')" title="Forest Green"></div>
+                                        <div class="color-swatch" style="background-color: #b91c1c;" onclick="applyTextColor('follow_up', '#b91c1c')" title="Crimson Red"></div>
+                                    </div>
+                                </div>
+
+                                <!-- Quick Placeholders -->
+                                <div class="rich-group">
+                                    <button type="button" class="rich-chip" onclick="insertPlaceholder('follow_up', '{hr_name}')">+ {hr_name}</button>
+                                    <button type="button" class="rich-chip" onclick="insertPlaceholder('follow_up', '{company}')">+ {company}</button>
+                                </div>
+
+                                <!-- Quick Opt-Out Line -->
+                                <button type="button" class="rich-btn" onclick="insertOptOut('follow_up')" title="Insert opt-out footer divider" style="font-size: 0.75rem; color: #64748b;">
+                                    + Opt-Out Note
+                                </button>
+
+                                <!-- Toggle HTML Source -->
+                                <button type="button" class="rich-btn" onclick="toggleSource('follow_up')" id="toggle-btn-follow_up" title="Toggle Visual / Raw HTML Code" style="margin-left: auto; font-size: 0.75rem;">
+                                    &lt;/&gt; HTML
+                                </button>
+                            </div>
+
+                            <!-- Editable Visual Area -->
+                            <div class="rich-editor-content" id="editor-follow_up" contenteditable="true" data-placeholder="Compose your follow-up cold email here..."></div>
+
+                            <!-- Raw HTML Fallback / Code View -->
+                            <textarea class="raw-html-textarea" id="raw-follow_up" oninput="syncFromRaw('follow_up')"></textarea>
+
+                            <!-- Hidden Textarea for Form POST -->
+                            <textarea name="follow_up_body" id="target-follow_up" style="display: none;">{{ follow_up_template.body }}</textarea>
+                        </div>
+
+                        <div class="form-help">
+                            Auto-sent to recipients of initial outreach after N days unless marked Replied or Do Not Contact.
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Sending Settings & Safeguards Card -->
+        <div class="col-full">
+            <div class="card">
+                <div class="card-header">
+                    <span class="card-title">Queue & Sending Safety Safeguards</span>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-half">
+                            <div class="form-group">
+                                <label class="form-label">Daily Sending Cap (emails/day):</label>
+                                <input type="number" name="daily_cap" class="form-control" value="{{ settings.daily_cap }}" min="1" max="500" required>
+                                <div class="form-help">Default: 30. Queue automatically pauses once this threshold is reached in a single day.</div>
+                            </div>
+
+                            <div style="display: flex; gap: 1rem;">
+                                <div class="form-group" style="flex: 1;">
+                                    <label class="form-label">Min Delay (sec):</label>
+                                    <input type="number" name="min_delay" class="form-control" value="{{ settings.min_delay }}" min="5" max="300" required>
+                                    <div class="form-help">Default: 30 seconds.</div>
+                                </div>
+                                <div class="form-group" style="flex: 1;">
+                                    <label class="form-label">Max Delay (sec):</label>
+                                    <input type="number" name="max_delay" class="form-control" value="{{ settings.max_delay }}" min="10" max="600" required>
+                                    <div class="form-help">Default: 90 seconds.</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="col-half">
+                            <div class="form-group">
+                                <label class="form-label">Follow-Up Trigger Delay (Days):</label>
+                                <input type="number" name="follow_up_days" class="form-control" value="{{ settings.follow_up_days }}" min="1" max="60" required>
+                                <div class="form-help">Default: 5 days. Follow-up email becomes due N days after initial mail is sent.</div>
+                            </div>
+
+                            <div class="form-group">
+                                <label class="form-label">Sender Display Name:</label>
+                                <input type="text" name="sender_name" class="form-control" value="{{ settings.sender_name }}" required>
+                                <div class="form-help">Appears in From header: <code>{{ settings.sender_name }} &lt;{{ settings.sender_email }}&gt;</code></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- SMTP Credentials Alert Notice -->
+                    <div class="alert alert-info" style="margin-top: 1rem;">
+                        <div>
+                            <strong>🔐 Gmail SMTP Credentials (.env):</strong><br>
+                            Configured sender email: <code>{{ settings.sender_email }}</code><br>
+                            Your Gmail App Password is securely read from <code>.env</code> and is never logged or shown in the UI. 
+                            If you ever need to change your App Password, edit <code>.env</code> directly and restart the server.
+                        </div>
+                    </div>
+
+                    <div style="display: flex; justify-content: flex-end; margin-top: 1.5rem;">
+                        <button type="submit" class="btn btn-primary" onclick="prepareSubmit()">
+                            💾 Save Templates & Settings
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</form>
+
+<script>
+// Close open color palettes when clicking outside
+document.addEventListener("click", function(e) {
+    if (!e.target.closest(".rich-dropdown")) {
+        document.querySelectorAll(".color-palette").forEach(el => el.classList.remove("open"));
+    }
+});
+
+function togglePalette(id) {
+    const palette = document.getElementById(id);
+    const isOpen = palette.classList.contains("open");
+    document.querySelectorAll(".color-palette").forEach(el => el.classList.remove("open"));
+    if (!isOpen) palette.classList.add("open");
+}
+
+function execCmd(target, command, value = null) {
+    const editor = document.getElementById("editor-" + target);
+    editor.focus();
+    document.execCommand(command, false, value);
+    syncToHidden(target);
+}
+
+function applyFontFamily(target, fontName) {
+    const editor = document.getElementById("editor-" + target);
+    editor.style.fontFamily = fontName;
+    
+    // Also apply to current selection if any text is highlighted
+    const sel = window.getSelection();
+    if (sel.rangeCount > 0 && !sel.isCollapsed) {
+        document.execCommand("fontName", false, fontName);
+    }
+    syncToHidden(target);
+}
+
+function applyFontSize(target, sizePx) {
+    const editor = document.getElementById("editor-" + target);
+    const sel = window.getSelection();
+    if (sel.rangeCount > 0 && !sel.isCollapsed) {
+        const range = sel.getRangeAt(0);
+        const span = document.createElement("span");
+        span.style.fontSize = sizePx;
+        span.appendChild(range.extractContents());
+        range.insertNode(span);
+    } else {
+        editor.style.fontSize = sizePx;
+    }
+    syncToHidden(target);
+}
+
+function applyHighlight(target, color) {
+    const editor = document.getElementById("editor-" + target);
+    editor.focus();
+    const sel = window.getSelection();
+    
+    if (sel.rangeCount > 0 && !sel.isCollapsed) {
+        const range = sel.getRangeAt(0);
+        if (color === 'transparent') {
+            document.execCommand("removeFormat", false, null);
+        } else {
+            const mark = document.createElement("mark");
+            mark.style.backgroundColor = color;
+            mark.style.padding = "1px 5px";
+            mark.style.borderRadius = "3px";
+            mark.appendChild(range.extractContents());
+            range.insertNode(mark);
+        }
+    } else {
+        document.execCommand("hiliteColor", false, color);
+    }
+    
+    document.querySelectorAll(".color-palette").forEach(el => el.classList.remove("open"));
+    syncToHidden(target);
+}
+
+function applyTextColor(target, color) {
+    const editor = document.getElementById("editor-" + target);
+    editor.focus();
+    document.execCommand("foreColor", false, color);
+    document.querySelectorAll(".color-palette").forEach(el => el.classList.remove("open"));
+    syncToHidden(target);
+}
+
+function insertPlaceholder(target, placeholder) {
+    const editor = document.getElementById("editor-" + target);
+    editor.focus();
+    
+    const sel = window.getSelection();
+    if (sel.rangeCount > 0) {
+        const range = sel.getRangeAt(0);
+        range.deleteContents();
+        const textNode = document.createTextNode(placeholder);
+        range.insertNode(textNode);
+        range.setStartAfter(textNode);
+        range.setEndAfter(textNode);
+        sel.removeAllRanges();
+        sel.addRange(range);
+    } else {
+        editor.innerHTML += placeholder;
+    }
+    syncToHidden(target);
+}
+
+function insertOptOut(target) {
+    const editor = document.getElementById("editor-" + target);
+    editor.focus();
+    const optOutHtml = `<hr style="border:none; border-top:1px solid #e2e8f0; margin:24px 0 14px 0;"><p style="font-size:13px; color:#718096; font-style:italic;">If this isn't relevant, just reply and I'll stop.</p>`;
+    
+    if (editor.innerHTML.includes("If this isn't relevant")) {
+        alert("Opt-out note is already present in this template.");
+        return;
+    }
+    editor.innerHTML += optOutHtml;
+    syncToHidden(target);
+}
+
+function toggleSource(target) {
+    const editor = document.getElementById("editor-" + target);
+    const raw = document.getElementById("raw-" + target);
+    const btn = document.getElementById("toggle-btn-" + target);
+    
+    if (raw.style.display === "block") {
+        editor.innerHTML = raw.value;
+        raw.style.display = "none";
+        editor.style.display = "block";
+        btn.textContent = "</> HTML";
+        btn.classList.remove("active");
+    } else {
+        raw.value = editor.innerHTML;
+        editor.style.display = "none";
+        raw.style.display = "block";
+        btn.textContent = "👁 Visual";
+        btn.classList.add("active");
+    }
+}
+
+function syncFromRaw(target) {
+    const raw = document.getElementById("raw-" + target);
+    const targetHidden = document.getElementById("target-" + target);
+    targetHidden.value = raw.value;
+}
+
+function syncToHidden(target) {
+    const editor = document.getElementById("editor-" + target);
+    const raw = document.getElementById("raw-" + target);
+    const targetHidden = document.getElementById("target-" + target);
+    
+    if (raw.style.display === "block") {
+        targetHidden.value = raw.value;
+    } else {
+        targetHidden.value = editor.innerHTML;
+        raw.value = editor.innerHTML;
+    }
+}
+
+function initEditor(target) {
+    const targetHidden = document.getElementById("target-" + target);
+    const editor = document.getElementById("editor-" + target);
+    const raw = document.getElementById("raw-" + target);
+    
+    let content = targetHidden.value || "";
+    
+    if (content && !content.includes("<p>") && !content.includes("<div>")) {
+        if (content.includes("\n---\n") || content.includes("\n---")) {
+            const parts = content.split(/\n---\n|\n---/);
+            const mainParas = parts[0].split("\n\n").filter(p => p.trim()).map(p => `<p>${p.replace(/\n/g, "<br>")}</p>`).join("");
+            const footerParas = parts[1] ? parts[1].split("\n\n").filter(p => p.trim()).map(p => `<p style="font-size:13px; color:#718096; font-style:italic;">${p.replace(/\n/g, "<br>")}</p>`).join("") : "";
+            content = mainParas + '<hr style="border:none; border-top:1px solid #e2e8f0; margin:24px 0 14px 0;">' + footerParas;
+        } else {
+            content = content.split("\n\n").filter(p => p.trim()).map(p => `<p>${p.replace(/\n/g, "<br>")}</p>`).join("");
+        }
+    }
+    
+    editor.innerHTML = content;
+    raw.value = content;
+    targetHidden.value = content;
+    
+    editor.addEventListener("input", () => syncToHidden(target));
+}
+
+function prepareSubmit() {
+    ['initial', 'follow_up'].forEach(target => {
+        const editor = document.getElementById("editor-" + target);
+        const raw = document.getElementById("raw-" + target);
+        const targetHidden = document.getElementById("target-" + target);
+        
+        if (raw.style.display === "block") {
+            targetHidden.value = raw.value;
+        } else {
+            targetHidden.value = editor.innerHTML;
+        }
+    });
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+    initEditor("initial");
+    initEditor("follow_up");
+});
+</script>
+{% endblock %}

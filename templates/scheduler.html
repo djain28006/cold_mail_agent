@@ -1,0 +1,118 @@
+{% extends "base.html" %}
+
+{% block title %}Scheduler - HR Cold Mailer{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Automated Batch Scheduler</h1>
+        <p class="page-subtitle">Schedule cold outreach batches for optimal response times (e.g. weekdays at 10:00 AM).</p>
+    </div>
+</div>
+
+<div class="row">
+    <!-- Schedule One-Off Batch -->
+    <div class="col-half">
+        <div class="card">
+            <div class="card-header">
+                <span class="card-title">1. Schedule One-Off Batch</span>
+            </div>
+            <div class="card-body">
+                <form method="POST" action="{{ url_for('schedule_date_route') }}">
+                    <div class="form-group">
+                        <label class="form-label">Pick Specific Date & Time:</label>
+                        <input type="datetime-local" name="run_datetime" class="form-control" required>
+                        <div class="form-help">The queue will automatically start at this exact date and time.</div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Batch Outreach Mode:</label>
+                        <select name="mode" class="form-control">
+                            <option value="initial">Initial Outreach (Pending Contacts)</option>
+                            <option value="follow_up">Follow-up Batch (Due Contacts)</option>
+                        </select>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary btn-sm">
+                        📅 Schedule One-Off Job
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Schedule Daily Recurring Batch -->
+    <div class="col-half">
+        <div class="card">
+            <div class="card-header">
+                <span class="card-title">2. Schedule Daily Recurring Batch</span>
+            </div>
+            <div class="card-body">
+                <form method="POST" action="{{ url_for('schedule_daily_route') }}">
+                    <div class="form-group">
+                        <label class="form-label">Daily Send Time (e.g. 10:00):</label>
+                        <input type="time" name="daily_time" class="form-control" value="10:00" required>
+                        <div class="form-help">Runs automatically every day at this time up to your daily cap.</div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Batch Outreach Mode:</label>
+                        <select name="mode" class="form-control">
+                            <option value="initial">Initial Outreach (Pending Contacts)</option>
+                            <option value="follow_up">Follow-up Batch (Due Contacts)</option>
+                        </select>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary btn-sm">
+                        ⏰ Schedule Recurring Daily Job
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Active Scheduled Jobs List -->
+<div class="card" style="margin-top: 1.5rem;">
+    <div class="card-header">
+        <span class="card-title">Active Scheduled Jobs ({{ jobs|length }})</span>
+    </div>
+    <div class="table-responsive">
+        <table>
+            <thead>
+                <tr>
+                    <th>Job Name</th>
+                    <th>Schedule Type</th>
+                    <th>Next Run Time</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% if jobs %}
+                    {% for job in jobs %}
+                    <tr>
+                        <td><strong>{{ job.name }}</strong></td>
+                        <td><span class="badge badge-secondary">{{ job.trigger_type }}</span></td>
+                        <td style="font-weight: 500; color: var(--primary);">{{ job.next_run_time }}</td>
+                        <td>
+                            <form method="POST" action="{{ url_for('cancel_job_route', job_id=job.id) }}" onsubmit="return confirm('Cancel this scheduled job?');">
+                                <button type="submit" class="btn btn-danger btn-sm">
+                                    Cancel Job
+                                </button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                {% else %}
+                    <tr>
+                        <td colspan="4" style="text-align: center; padding: 2rem; color: var(--text-muted);">
+                            No active jobs scheduled. Pick a date/time or daily time above to schedule an automated batch.
+                        </td>
+                    </tr>
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
+

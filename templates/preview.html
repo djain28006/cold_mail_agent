@@ -1,0 +1,170 @@
+{% extends "base.html" %}
+
+{% block title %}Email Preview - HR Cold Mailer{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Email Previewer</h1>
+        <p class="page-subtitle">Inspect the exact rendered email and attachment for any HR contact before sending.</p>
+    </div>
+    <div style="display: flex; gap: 0.5rem;">
+        <button id="btn-test-mail" class="btn btn-primary btn-sm" onclick="sendTestEmail()">
+            ✉️ Send Test to Myself ({{ sender_address }})
+        </button>
+    </div>
+</div>
+
+<!-- Contact & Mode Selector Bar -->
+<div class="card" style="margin-bottom: 1.5rem;">
+    <div class="card-body" style="padding: 1rem 1.25rem;">
+        <form method="GET" action="{{ url_for('preview_page') }}" style="display: flex; gap: 1rem; align-items: center; flex-wrap: wrap;">
+            <div style="flex: 2; min-width: 250px;">
+                <label class="form-label" style="margin-bottom: 0.25rem;">Select HR Contact:</label>
+                <select name="contact_id" class="form-control" onchange="this.form.submit()">
+                    {% if contacts %}
+                        {% for c in contacts %}
+                            <option value="{{ c.id }}" {% if selected_contact and selected_contact.id == c.id %}selected{% endif %}>
+                                {{ c.name }} - {{ c.company }} ({{ c.email }})
+                            </option>
+                        {% endfor %}
+                    {% else %}
+                        <option value="0">Demo: Sarah Connor - Acme Corp (demo@acmecorp.com)</option>
+                    {% endif %}
+                </select>
+            </div>
+
+            <div style="flex: 1; min-width: 180px;">
+                <label class="form-label" style="margin-bottom: 0.25rem;">Template Type:</label>
+                <select name="mode" class="form-control" onchange="this.form.submit()">
+                    <option value="initial" {% if mode == 'initial' %}selected{% endif %}>Initial Outreach</option>
+                    <option value="follow_up" {% if mode == 'follow_up' %}selected{% endif %}>Follow-up</option>
+                </select>
+            </div>
+
+            <div style="margin-top: 1.4rem;">
+                <noscript><button type="submit" class="btn btn-outline btn-sm">Update Preview</button></noscript>
+                {% if selected_contact %}
+                <button type="button" class="btn btn-success btn-sm" onclick="sendContactNow({{ selected_contact.id }})">
+                    🚀 Send To This Contact Now
+                </button>
+                {% endif %}
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Email Preview Box -->
+<div class="card">
+    <div class="card-header">
+        <span class="card-title">Message Inspector</span>
+        <span class="badge {% if mode == 'initial' %}badge-pending{% else %}badge-dry_run{% endif %}">
+            {{ mode|capitalize }} Template
+        </span>
+    </div>
+    <div class="card-body">
+        <div class="email-preview-box">
+            <div class="email-meta-line">
+                <span class="email-meta-label">From:</span>
+                <span class="email-meta-val">{{ sender_name }} &lt;{{ sender_address }}&gt;</span>
+            </div>
+            <div class="email-meta-line">
+                <span class="email-meta-label">To:</span>
+                <span class="email-meta-val">
+                    {% if selected_contact %}
+                        {{ selected_contact.name }} &lt;{{ selected_contact.email }}&gt;
+                    {% else %}
+                        Sarah Connor &lt;demo@acmecorp.com&gt;
+                    {% endif %}
+                </span>
+            </div>
+            <div class="email-meta-line">
+                <span class="email-meta-label">Subject:</span>
+                <span class="email-meta-val" style="color: #1e3a8a; font-weight: 600;">{{ rendered_subject }}</span>
+            </div>
+            <div class="email-meta-line">
+                <span class="email-meta-label">Attachment:</span>
+                <span class="email-meta-val" style="display: flex; align-items: center; gap: 0.65rem; flex-wrap: wrap;">
+                    {% if resume_path %}
+                        <span style="background: #eff6ff; border: 1px solid #bfdbfe; color: #1e40af; border-radius: 6px; padding: 3px 8px; font-size: 0.85rem; font-weight: 600;">
+                            📎 {{ resume_filename }} ({{ resume_size }} KB)
+                        </span>
+                        <a href="{{ url_for('download_resume') }}" target="_blank" class="btn btn-outline btn-sm" style="padding: 2px 8px; font-size: 0.75rem;">
+                            👁️ View / Download Attached PDF ↗
+                        </a>
+                    {% else %}
+                        <span style="color: var(--danger);">⚠️ No PDF resume found in /uploads</span>
+                    {% endif %}
+                </span>
+            </div>
+
+            <!-- View Mode Switcher -->
+            <div style="margin-top: 1.5rem; display: flex; gap: 0.5rem; border-bottom: 1px solid var(--border); padding-bottom: 0.5rem;">
+                <button type="button" id="tab-html-btn" class="btn btn-sm btn-primary" onclick="switchPreviewTab('html')">
+                    Rendered HTML View
+                </button>
+                <button type="button" id="tab-raw-btn" class="btn btn-sm btn-outline" onclick="switchPreviewTab('raw')">
+                    Plain Text View
+                </button>
+            </div>
+
+            <!-- HTML Preview Container -->
+            <div id="preview-html-view" class="email-rendered-view" style="background: white;">
+                {{ rendered_html | safe }}
+
+                <!-- Gmail-style Attachment Preview Card -->
+                {% if resume_path %}
+                <div style="margin-top: 2rem; border-top: 1px solid #e2e8f0; padding-top: 1rem;">
+                    <div style="font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: #64748b; margin-bottom: 0.65rem;">
+                        📎 1 Attached File (Included in email):
+                    </div>
+                    <div style="display: inline-flex; align-items: center; gap: 0.85rem; background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 8px; padding: 0.75rem 1rem; min-width: 320px; box-shadow: 0 1px 2px rgba(0,0,0,0.05);">
+                        <div style="font-size: 2.2rem; line-height: 1;">📄</div>
+                        <div style="flex: 1; min-width: 0;">
+                            <div style="font-weight: 600; font-size: 0.9rem; color: #1e293b; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                                {{ resume_filename }}
+                            </div>
+                            <div style="font-size: 0.75rem; color: #64748b; margin-top: 2px;">
+                                {{ resume_size }} KB &bull; PDF Document
+                            </div>
+                        </div>
+                        <a href="{{ url_for('download_resume') }}" target="_blank" class="btn btn-outline btn-sm" style="font-size: 0.75rem;">
+                            Open PDF ↗
+                        </a>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+
+            <!-- Raw Plain Text Preview Container -->
+            <div id="preview-raw-view" class="email-rendered-view" style="display: none; background: #f8fafc; font-family: monospace; white-space: pre-wrap; font-size: 0.85rem; color: #334155;">{{ rendered_plain }}
+
+------------------------------------------------------------
+[ATTACHMENT]: {{ resume_filename }} ({{ resume_size }} KB, application/pdf)
+------------------------------------------------------------</div>
+        </div>
+    </div>
+</div>
+
+<script>
+function switchPreviewTab(tab) {
+    const htmlView = document.getElementById("preview-html-view");
+    const rawView = document.getElementById("preview-raw-view");
+    const htmlBtn = document.getElementById("tab-html-btn");
+    const rawBtn = document.getElementById("tab-raw-btn");
+
+    if (tab === 'html') {
+        htmlView.style.display = "block";
+        rawView.style.display = "none";
+        htmlBtn.className = "btn btn-sm btn-primary";
+        rawBtn.className = "btn btn-sm btn-outline";
+    } else {
+        htmlView.style.display = "none";
+        rawView.style.display = "block";
+        htmlBtn.className = "btn btn-sm btn-outline";
+        rawBtn.className = "btn btn-sm btn-primary";
+    }
+}
+</script>
+{% endblock %}
+

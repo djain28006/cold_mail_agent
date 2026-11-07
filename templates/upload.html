@@ -1,0 +1,149 @@
+{% extends "base.html" %}
+
+{% block title %}Uploads & HR List - HR Cold Mailer{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Upload Inputs</h1>
+        <p class="page-subtitle">Configure your Resume PDF attachment and import HR contacts from CSV.</p>
+    </div>
+</div>
+
+<div class="row">
+    <!-- Resume Upload Card -->
+    <div class="col-half">
+        <div class="card">
+            <div class="card-header">
+                <span class="card-title">1. Resume Attachment (PDF)</span>
+            </div>
+            <div class="card-body">
+                <p style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 1rem;">
+                    This PDF will be automatically attached to every cold email sent to HRs.
+                </p>
+
+                <!-- Current Resume Status -->
+                {% if resume_info.exists %}
+                    <div style="background: #f8fafc; border: 1px solid var(--border); border-radius: var(--radius); padding: 1rem; margin-bottom: 1.25rem;">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <div>
+                                <strong>📄 {{ resume_info.filename }}</strong><br>
+                                <span style="font-size: 0.85rem; color: var(--text-muted);">
+                                    Size: {{ "%.2f"|format(resume_info.size_kb) }} KB 
+                                    {% if resume_info.size_kb > 1024 %}
+                                        ({{ "%.2f"|format(resume_info.size_mb) }} MB)
+                                    {% endif %}
+                                </span>
+                            </div>
+                            <a href="{{ url_for('download_resume') }}" class="btn btn-outline btn-sm" target="_blank">
+                                ⬇ Download
+                            </a>
+                        </div>
+                    </div>
+
+                    <!-- Warning if > 1 MB -->
+                    {% if resume_info.size_kb > 1024 %}
+                        <div class="alert alert-warning">
+                            <span>⚠️ <strong>File size warning:</strong> Resume is {{ "%.2f"|format(resume_info.size_mb) }} MB (> 1 MB limit recommendation). High-attachment sizes increase the likelihood of emails landing in spam folders. Consider compressing your PDF.</span>
+                        </div>
+                    {% endif %}
+                {% else %}
+                    <div class="alert alert-warning">
+                        <span>⚠️ No resume PDF currently uploaded. Please upload a PDF before sending emails.</span>
+                    </div>
+                {% endif %}
+
+                <!-- Upload Form -->
+                <form action="{{ url_for('upload_resume_route') }}" method="POST" enctype="multipart/form-data">
+                    <div class="form-group">
+                        <label class="form-label">Upload New Resume (PDF):</label>
+                        <input type="file" name="resume_file" accept=".pdf,application/pdf" class="form-control" required>
+                        <div class="form-help">Supported format: PDF only. Maximum recommended size: 1 MB.</div>
+                    </div>
+                    <button type="submit" class="btn btn-primary btn-sm">
+                        ⬆ Upload Resume
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- HR List CSV Upload Card -->
+    <div class="col-half">
+        <div class="card">
+            <div class="card-header">
+                <span class="card-title">2. HR List CSV Import</span>
+            </div>
+            <div class="card-body">
+                <p style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 1rem;">
+                    Required columns: <code>name</code>, <code>email</code>, <code>company</code>.
+                </p>
+
+                <!-- CSV File Upload Form -->
+                <form action="{{ url_for('upload_csv_route') }}" method="POST" enctype="multipart/form-data">
+                    <div class="form-group">
+                        <label class="form-label">Choose CSV File:</label>
+                        <input type="file" name="csv_file" accept=".csv,text/csv" class="form-control" required>
+                        <div class="form-help">Emails will be validated; duplicate emails are automatically dropped.</div>
+                    </div>
+                    <button type="submit" class="btn btn-primary btn-sm">
+                        📁 Parse & Import CSV File
+                    </button>
+                </form>
+
+                <hr style="border: none; border-top: 1px dashed var(--border); margin: 1.5rem 0;">
+
+                <!-- Raw CSV Text Paste Option -->
+                <details>
+                    <summary style="cursor: pointer; font-size: 0.9rem; font-weight: 600; color: var(--primary);">
+                        Or Paste CSV Text Directly
+                    </summary>
+                    <form action="{{ url_for('paste_csv_route') }}" method="POST" style="margin-top: 1rem;">
+                        <div class="form-group">
+                            <textarea name="csv_text" class="form-control" style="min-height: 120px;" placeholder="name,email,company&#10;Alice Smith,alice@techcorp.com,TechCorp&#10;Bob Jones,bob@innovate.io,Innovate"></textarea>
+                        </div>
+                        <button type="submit" class="btn btn-outline btn-sm">
+                            Parse & Import Pasted CSV
+                        </button>
+                    </form>
+                </details>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Preview Table of Recently Uploaded Contacts -->
+{% if preview_contacts %}
+<div class="card" style="margin-top: 1.5rem;">
+    <div class="card-header">
+        <span class="card-title">CSV Import Preview (Showing {{ preview_contacts|length }} Contacts)</span>
+        <a href="{{ url_for('dashboard') }}" class="btn btn-success btn-sm">Go to Dashboard →</a>
+    </div>
+    <div class="table-responsive">
+        <table>
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Name</th>
+                    <th>Email</th>
+                    <th>Company</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for c in preview_contacts %}
+                <tr>
+                    <td>{{ loop.index }}</td>
+                    <td><strong>{{ c.name or 'Unknown' }}</strong></td>
+                    <td>{{ c.email }}</td>
+                    <td>{{ c.company or '-' }}</td>
+                    <td><span class="badge badge-pending">Pending</span></td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endif %}
+{% endblock %}
+
