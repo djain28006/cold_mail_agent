@@ -1,20 +1,22 @@
 # Environment variables and secrets
 .env
+.env.local
+*.env
 
 # Python cache
 __pycache__/
 *.py[cod]
 *$py.class
 *.so
+.pytest_cache/
 
-# Database
+# SQLite Database
 *.db
 *.sqlite3
 
-# Uploaded resumes / files
-uploads/*
-!uploads/.gitkeep
-!uploads/*.pdf
+# Uploads - keep resume and .gitkeep
+uploads/large_resume.pdf
+uploads/my_resume.pdf
 
 # Virtual environment
 venv/
@@ -25,3 +27,7 @@ env/
 .DS_Store
 Thumbs.db
 
+# Build artifacts
+.netlify/
+dist/
+build/
