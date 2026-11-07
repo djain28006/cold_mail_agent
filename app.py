@@ -206,13 +206,13 @@ def upload_csv_route():
         session["recent_csv_preview"] = contacts[:25]
         flash(
             f"CSV Processed: {added} new contacts added, {dups} duplicate emails skipped, "
-            f"{invalid} invalid emails discarded.",
+            f"{invalid} invalid emails discarded. Choose dispatch options below!",
             "success"
         )
     except Exception as e:
         flash(f"Error parsing CSV file: {str(e)}", "danger")
 
-    return redirect(url_for("upload_page"))
+    return redirect(url_for("pipeline_page"))
 
 
 @app.route("/upload/csv-paste", methods=["POST"])
@@ -232,13 +232,128 @@ def paste_csv_route():
         session["recent_csv_preview"] = contacts[:25]
         flash(
             f"Pasted CSV Processed: {added} new contacts added, {dups} duplicates skipped, "
-            f"{invalid} invalid discarded.",
+            f"{invalid} invalid discarded. Choose dispatch options below!",
             "success"
         )
     except Exception as e:
         flash(f"Error parsing pasted CSV: {str(e)}", "danger")
 
-    return redirect(url_for("upload_page"))
+    return redirect(url_for("pipeline_page"))
+
+
+@app.route("/pipeline")
+def pipeline_page():
+    """Guided Outreach Pipeline: Template/Resume -> CSV -> Batch vs Individual -> Send Now or Schedule."""
+    pending = db.get_pending_contacts()
+    all_contacts = db.get_all_contacts()
+    template_record = db.get_template("initial")
+    resume_path = mailer.get_resume_path()
+    resume_filename = os.path.basename(resume_path) if resume_path else None
+    resume_size = round(os.path.getsize(resume_path) / 1024, 1) if resume_path else 0
+    daily_cap = db.get_setting("daily_cap", "30")
+
+    selected_contact = pending[0] if pending else (all_contacts[0] if all_contacts else None)
+    rendered_subject = ""
+    rendered_html = ""
+    if selected_contact:
+        rendered_subject, _, rendered_html = mailer.render_email(
+            template_record["subject"], template_record["body"], selected_contact["name"], selected_contact["company"]
+        )
+
+    return render_template(
+        "pipeline.html",
+        pending_contacts=pending,
+        all_contacts=all_contacts,
+        template=template_record,
+        resume_filename=resume_filename,
+        resume_size=resume_size,
+        daily_cap=daily_cap,
+        selected_contact=selected_contact,
+        rendered_subject=rendered_subject,
+        rendered_html=rendered_html
+    )
+
+
+@app.route("/pipeline/dispatch", methods=["POST"])
+def pipeline_dispatch():
+    """Handles dispatch from the pipeline wizard: batch or individual, now or scheduled."""
+    send_mode = request.form.get("send_mode", "batch")
+    timing_mode = request.form.get("timing_mode", "now")
+    schedule_datetime = request.form.get("schedule_datetime", "").strip()
+    contact_id = request.form.get("contact_id")
+
+    if send_mode == "batch":
+        if timing_mode == "now":
+            started, msg = mailer.queue_manager.start(mode="initial")
+            flash(msg, "success" if started else "warning")
+            return redirect(url_for("dashboard"))
+        else:  # schedule batch
+            if not schedule_datetime:
+                flash("Please pick a date and time to schedule the batch.", "warning")
+                return redirect(url_for("pipeline_page"))
+            ok, msg = scheduler.schedule_one_off_batch(schedule_datetime, mode="initial")
+            flash(msg, "success" if ok else "danger")
+            return redirect(url_for("dashboard"))
+    else:  # individual
+        if not contact_id or not contact_id.isdigit():
+            flash("Please select an HR contact from the dropdown.", "warning")
+            return redirect(url_for("pipeline_page"))
+        contact_id = int(contact_id)
+        if timing_mode == "now":
+            contact = db.get_contact_by_id(contact_id)
+            if not contact:
+                flash("Contact not found.", "danger")
+                return redirect(url_for("pipeline_page"))
+            dry_run = db.get_setting("dry_run", "0") == "1"
+            template_record = db.get_template("initial")
+            resume_path = mailer.get_resume_path()
+            subj, plain, html = mailer.render_email(
+                template_record["subject"], template_record["body"], contact["name"], contact["company"]
+            )
+            success, msg = mailer.send_email_smtp(
+                recipient_email=contact["email"],
+                subject=subj,
+                plain_text=plain,
+                html_text=html,
+                resume_path=resume_path,
+                dry_run=dry_run
+            )
+            if success:
+                db.update_contact_status(contact_id, "dry_run" if dry_run else "sent")
+                db.log_email(contact["email"], "initial", "dry_run" if dry_run else "success", msg, contact_id=contact_id)
+                flash(f"Email sent successfully to {contact['email']}!", "success")
+            else:
+                db.update_contact_status(contact_id, "failed", error=msg)
+                db.log_email(contact["email"], "initial", "failed", msg, contact_id=contact_id)
+                flash(f"Failed sending to {contact['email']}: {msg}", "danger")
+            return redirect(url_for("dashboard"))
+        else:  # schedule individual
+            if not schedule_datetime:
+                flash("Please pick a date and time for this contact.", "warning")
+                return redirect(url_for("pipeline_page"))
+            ok, msg = scheduler.schedule_one_off_contact_job(contact_id, schedule_datetime)
+            flash(msg, "success" if ok else "danger")
+            return redirect(url_for("dashboard"))
+
+
+@app.route("/api/contacts/<int:contact_id>/preview")
+def api_contact_preview(contact_id):
+    """Returns dynamic rendered preview data for a specific contact."""
+    contact = db.get_contact_by_id(contact_id)
+    if not contact:
+        return jsonify({"success": False, "message": "Contact not found."}), 404
+    template_record = db.get_template("initial")
+    subj, plain, html = mailer.render_email(
+        template_record["subject"], template_record["body"], contact["name"], contact["company"]
+    )
+    return jsonify({
+        "success": True,
+        "name": contact["name"],
+        "email": contact["email"],
+        "company": contact["company"],
+        "subject": subj,
+        "html": html
+    })
 
 
 @app.route("/templates")

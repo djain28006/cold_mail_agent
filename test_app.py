@@ -189,8 +189,21 @@ def run_all_tests():
     assert "<mark style=" in rich_html
     print("[PASS] 16. Rich HTML template with highlights and font families rendered successfully.")
 
+    # 15. Test Send Pipeline & Dynamic Contact Preview API
+    res = client.get("/pipeline")
+    assert res.status_code == 200
+    assert b"Outreach Dispatch Pipeline" in res.data
+
+    contact = db.get_all_contacts()[0]
+    res = client.get(f"/api/contacts/{contact['id']}/preview")
+    assert res.status_code == 200
+    preview_data = res.get_json()
+    assert preview_data["success"] is True
+    assert preview_data["company"] != ""
+    print("[PASS] 17. Send Wizard Pipeline page & Dynamic API contact preview verified.")
+
     print("\n==================================================")
-    print("ALL 16 TESTS PASSED SUCCESSFULLY! ✅")
+    print("ALL 17 TESTS PASSED SUCCESSFULLY! ✅")
     print("==================================================")
 
 if __name__ == "__main__":

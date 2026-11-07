@@ -16,6 +16,7 @@
 
         <ul class="nav-links">
             <li><a href="{{ url_for('dashboard') }}" class="{% if request.endpoint == 'dashboard' %}active{% endif %}">Dashboard</a></li>
+            <li><a href="{{ url_for('pipeline_page') }}" class="{% if request.endpoint == 'pipeline_page' %}active{% endif %}" style="font-weight: 700; color: #2563eb;">🚀 Send Wizard</a></li>
             <li><a href="{{ url_for('upload_page') }}" class="{% if request.endpoint == 'upload_page' %}active{% endif %}">Upload & CSV</a></li>
             <li><a href="{{ url_for('templates_page') }}" class="{% if request.endpoint == 'templates_page' %}active{% endif %}">Templates & Config</a></li>
             <li><a href="{{ url_for('preview_page') }}" class="{% if request.endpoint == 'preview_page' %}active{% endif %}">Preview Mail</a></li>

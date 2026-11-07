@@ -24,6 +24,34 @@ def scheduled_queue_worker(mode="initial"):
         db.log_email("system", mode, "warning", f"Scheduled job could not start queue: {msg}")
 
 
+def scheduled_contact_worker(contact_id):
+    """Triggered by APScheduler to send email to 1 specific contact at scheduled time."""
+    contact = db.get_contact_by_id(contact_id)
+    if not contact:
+        return
+    dry_run = db.get_setting("dry_run", "0") == "1"
+    template_record = db.get_template("initial")
+    resume_path = mailer.get_resume_path()
+
+    subj, plain, html = mailer.render_email(
+        template_record["subject"], template_record["body"], contact["name"], contact["company"]
+    )
+    ok, msg = mailer.send_email_smtp(
+        recipient_email=contact["email"],
+        subject=subj,
+        plain_text=plain,
+        html_text=html,
+        resume_path=resume_path,
+        dry_run=dry_run
+    )
+    if ok:
+        db.update_contact_status(contact_id, "dry_run" if dry_run else "sent", error=None)
+        db.log_email(contact["email"], "initial", "dry_run" if dry_run else "success", msg, contact_id=contact_id)
+    else:
+        db.update_contact_status(contact_id, "failed", error=msg)
+        db.log_email(contact["email"], "initial", "failed", msg, contact_id=contact_id)
+
+
 def init_scheduler():
     """Initializes and starts APScheduler if not already running."""
     if not scheduler.running:
@@ -59,6 +87,43 @@ def schedule_one_off_batch(run_datetime_str, mode="initial"):
 
     db.record_scheduled_job(job_id, job_name, "date", dt.strftime("%Y-%m-%d %H:%M:%S"))
     return True, f"Successfully scheduled batch for {dt.strftime('%b %d, %Y at %I:%M %p')}."
+
+
+def schedule_one_off_contact_job(contact_id, run_datetime_str):
+    """
+    Schedules an email to a single specific HR contact at a specific date and time.
+    """
+    clean_str = run_datetime_str.replace("T", " ")
+    if len(clean_str) == 16:
+        dt = datetime.strptime(clean_str, "%Y-%m-%d %H:%M")
+    else:
+        dt = datetime.strptime(clean_str, "%Y-%m-%d %H:%M:%S")
+
+    if dt <= datetime.now():
+        return False, "Scheduled time must be in the future."
+
+    contact = db.get_contact_by_id(contact_id)
+    if not contact:
+        return False, "Selected contact not found."
+
+    name = contact["name"] or "Contact"
+    company = contact["company"] or ""
+    email = contact["email"]
+
+    job_id = f"job_contact_{contact_id}_{uuid.uuid4().hex[:6]}"
+    job_name = f"Individual Email to {name} ({company}) <{email}>"
+
+    scheduler.add_job(
+        scheduled_contact_worker,
+        trigger=DateTrigger(run_date=dt),
+        args=[contact_id],
+        id=job_id,
+        name=job_name,
+        replace_existing=True
+    )
+
+    db.record_scheduled_job(job_id, job_name, "date", dt.strftime("%Y-%m-%d %H:%M:%S"))
+    return True, f"Successfully scheduled email to {name} ({company}) for {dt.strftime('%b %d, %Y at %I:%M %p')}."
 
 
 def schedule_daily_batch(time_str, mode="initial"):

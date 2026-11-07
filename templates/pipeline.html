@@ -1,0 +1,348 @@
+{% extends "base.html" %}
+
+{% block title %}Outreach Pipeline - HR Cold Mailer{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Outreach Dispatch Pipeline</h1>
+        <p class="page-subtitle">Your step-by-step guided flow to configure, select, and dispatch your cold emails.</p>
+    </div>
+</div>
+
+<!-- Pipeline Progress Bar -->
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; background: #ffffff; border: 1px solid var(--border); border-radius: var(--radius); padding: 1rem 1.5rem; box-shadow: var(--shadow-sm);">
+    <div style="display: flex; align-items: center; gap: 0.5rem;">
+        <span style="background: #10b981; color: white; width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 0.85rem;">✓</span>
+        <div>
+            <strong style="font-size: 0.9rem;">1. Template & Resume</strong><br>
+            <span style="font-size: 0.75rem; color: var(--text-muted);">Configured</span>
+        </div>
+    </div>
+    <div style="flex: 1; height: 2px; background: #e2e8f0; margin: 0 1rem;"></div>
+    <div style="display: flex; align-items: center; gap: 0.5rem;">
+        <span style="background: #10b981; color: white; width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 0.85rem;">✓</span>
+        <div>
+            <strong style="font-size: 0.9rem;">2. HR Contacts CSV</strong><br>
+            <span style="font-size: 0.75rem; color: var(--text-muted);">{{ pending_contacts|length }} Pending Contacts</span>
+        </div>
+    </div>
+    <div style="flex: 1; height: 2px; background: #e2e8f0; margin: 0 1rem;"></div>
+    <div style="display: flex; align-items: center; gap: 0.5rem;">
+        <span style="background: #2563eb; color: white; width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 0.85rem;">3</span>
+        <div>
+            <strong style="font-size: 0.9rem; color: #2563eb;">3. Choose Mode & Timing</strong><br>
+            <span style="font-size: 0.75rem; color: var(--text-muted);">Batch vs Individual</span>
+        </div>
+    </div>
+</div>
+
+<!-- Step 1 & 2 Snapshot Summary Cards -->
+<div class="row" style="margin-bottom: 1.5rem;">
+    <!-- Template & Resume Snapshot -->
+    <div class="col-half">
+        <div class="card" style="margin-bottom: 0;">
+            <div class="card-header" style="padding: 0.75rem 1rem;">
+                <strong style="font-size: 0.95rem;">✓ Step 1: Template & Resume Attached</strong>
+                <a href="{{ url_for('templates_page') }}" class="btn btn-outline btn-sm" style="font-size: 0.75rem; padding: 2px 8px;">Edit Template</a>
+            </div>
+            <div class="card-body" style="padding: 1rem; font-size: 0.85rem;">
+                <div style="margin-bottom: 0.5rem;">
+                    <strong>Subject:</strong> <span style="color: #1e3a8a;">{{ template.subject }}</span>
+                </div>
+                <div style="display: flex; align-items: center; gap: 0.5rem;">
+                    <strong>Attached Resume:</strong>
+                    {% if resume_filename %}
+                        <span style="background: #eff6ff; border: 1px solid #bfdbfe; color: #1e40af; border-radius: 4px; padding: 1px 6px; font-size: 0.8rem; font-weight: 600;">
+                            📄 {{ resume_filename }} ({{ resume_size }} KB)
+                        </span>
+                        <a href="{{ url_for('download_resume') }}" target="_blank" style="font-size: 0.75rem; color: var(--primary);">View PDF ↗</a>
+                    {% else %}
+                        <span style="color: var(--danger);">No resume uploaded</span>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- HR Contacts Snapshot -->
+    <div class="col-half">
+        <div class="card" style="margin-bottom: 0;">
+            <div class="card-header" style="padding: 0.75rem 1rem;">
+                <strong style="font-size: 0.95rem;">✓ Step 2: HR Recipients List</strong>
+                <a href="{{ url_for('upload_page') }}" class="btn btn-outline btn-sm" style="font-size: 0.75rem; padding: 2px 8px;">+ Upload / Change CSV</a>
+            </div>
+            <div class="card-body" style="padding: 1rem; font-size: 0.85rem;">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <div>
+                        <strong style="font-size: 1.25rem; color: var(--primary);">{{ pending_contacts|length }}</strong>
+                        <span style="color: var(--text-muted);"> Pending HR Contacts ready for outreach</span>
+                    </div>
+                    <div>
+                        <span style="font-size: 0.8rem; color: var(--text-muted);">Daily Cap: <strong>{{ daily_cap }} mails/day</strong></span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Step 3: Interactive Dispatch Flow -->
+<form method="POST" action="{{ url_for('pipeline_dispatch') }}" id="pipeline-form">
+    <div class="card">
+        <div class="card-header">
+            <span class="card-title">Step 3: Choose Dispatch Mode (Batch vs. Individual)</span>
+        </div>
+        <div class="card-body">
+            <!-- Mode Radio Selection Grid -->
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1.5rem;">
+                <!-- Option A: Batch Send -->
+                <label style="border: 2px solid #2563eb; background: #eff6ff; border-radius: 8px; padding: 1.25rem; cursor: pointer; display: block; position: relative;" id="card-batch" onclick="selectSendMode('batch')">
+                    <div style="display: flex; align-items: flex-start; gap: 0.75rem;">
+                        <input type="radio" name="send_mode" value="batch" id="mode-batch" checked style="margin-top: 3px; transform: scale(1.2);">
+                        <div>
+                            <strong style="font-size: 1.05rem; color: #1e3a8a;">📦 Batch Outreach (All {{ pending_contacts|length }} Contacts)</strong>
+                            <p style="font-size: 0.85rem; color: #475569; margin-top: 0.35rem;">
+                                No dropdown needed. Dispatches to all pending contacts in your list with humanized <strong>30–90 second delays</strong> and safety limits.
+                            </p>
+                        </div>
+                    </div>
+                </label>
+
+                <!-- Option B: Individual Send -->
+                <label style="border: 2px solid var(--border); background: #ffffff; border-radius: 8px; padding: 1.25rem; cursor: pointer; display: block; position: relative;" id="card-individual" onclick="selectSendMode('individual')">
+                    <div style="display: flex; align-items: flex-start; gap: 0.75rem;">
+                        <input type="radio" name="send_mode" value="individual" id="mode-individual" style="margin-top: 3px; transform: scale(1.2);">
+                        <div>
+                            <strong style="font-size: 1.05rem; color: var(--text);">👤 Individual (One at a Time)</strong>
+                            <p style="font-size: 0.85rem; color: var(--text-muted); margin-top: 0.35rem;">
+                                Select a specific HR from a dropdown, preview their personalized email, and send or schedule just for them.
+                            </p>
+                        </div>
+                    </div>
+                </label>
+            </div>
+
+            <!-- ============================================================= -->
+            <!-- SECTION 1: BATCH OUTREACH CONTROLS                            -->
+            <!-- ============================================================= -->
+            <div id="section-batch" style="background: #f8fafc; border: 1px solid var(--border); border-radius: 8px; padding: 1.5rem;">
+                <h3 style="font-size: 1.1rem; margin-bottom: 0.5rem; color: var(--text);">When do you want to send this batch?</h3>
+                <p style="font-size: 0.875rem; color: var(--text-muted); margin-bottom: 1.25rem;">
+                    Targeting <strong>{{ pending_contacts|length }} contacts</strong>. The queue will automatically insert 30–90s random pauses between emails.
+                </p>
+
+                <div class="row">
+                    <!-- Choice A: Send Right Now -->
+                    <div class="col-half">
+                        <div style="background: #ffffff; border: 1px solid var(--border); border-radius: 8px; padding: 1.25rem; height: 100%; display: flex; flex-direction: column; justify-content: space-between;">
+                            <div>
+                                <strong style="font-size: 1rem; color: #059669;">⚡ Option 1: Send Right Now</strong>
+                                <p style="font-size: 0.85rem; color: var(--text-muted); margin: 0.5rem 0 1rem 0;">
+                                    Starts the batch immediately in the background. You can monitor the real-time progress bar on the dashboard.
+                                </p>
+                            </div>
+                            <button type="button" class="btn btn-success" style="width: 100%;" onclick="submitBatch('now')">
+                                🚀 Send Batch Right Now
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Choice B: Schedule Batch -->
+                    <div class="col-half">
+                        <div style="background: #ffffff; border: 1px solid var(--border); border-radius: 8px; padding: 1.25rem; height: 100%; display: flex; flex-direction: column; justify-content: space-between;">
+                            <div>
+                                <strong style="font-size: 1rem; color: #2563eb;">📅 Option 2: Schedule for Date & Time</strong>
+                                <p style="font-size: 0.85rem; color: var(--text-muted); margin: 0.5rem 0 0.75rem 0;">
+                                    Pick the exact date and time (e.g. 9th November at 9:00 AM) to auto-trigger the batch.
+                                </p>
+                                <div class="form-group" style="margin-bottom: 1rem;">
+                                    <input type="datetime-local" id="batch-datetime" class="form-control" style="font-size: 0.95rem;">
+                                    <div class="form-help">Tip: Weekday mornings between 9:00 AM - 10:30 AM yield highest open rates.</div>
+                                </div>
+                            </div>
+                            <button type="button" class="btn btn-primary" style="width: 100%;" onclick="submitBatch('schedule')">
+                                ⏰ Schedule Batch For This Time
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ============================================================= -->
+            <!-- SECTION 2: INDIVIDUAL OUTREACH CONTROLS                       -->
+            <!-- ============================================================= -->
+            <div id="section-individual" style="display: none; background: #f8fafc; border: 1px solid var(--border); border-radius: 8px; padding: 1.5rem;">
+                <h3 style="font-size: 1.1rem; margin-bottom: 0.5rem; color: var(--text);">Select Contact & Choose Timing</h3>
+                <p style="font-size: 0.875rem; color: var(--text-muted); margin-bottom: 1rem;">
+                    Target one specific HR contact at a time with instant preview.
+                </p>
+
+                <!-- HR Contact Dropdown -->
+                <div class="form-group" style="margin-bottom: 1.25rem;">
+                    <label class="form-label" style="font-weight: 700;">Select HR Recipient from your CSV list:</label>
+                    <select name="contact_id" id="individual-contact-select" class="form-control" style="font-size: 0.95rem; font-weight: 500;" onchange="loadIndividualPreview(this.value)">
+                        {% if pending_contacts %}
+                            {% for c in pending_contacts %}
+                                <option value="{{ c.id }}">{{ c.name }} - {{ c.company }} ({{ c.email }})</option>
+                            {% endfor %}
+                        {% elif all_contacts %}
+                            {% for c in all_contacts %}
+                                <option value="{{ c.id }}">{{ c.name }} - {{ c.company }} ({{ c.email }})</option>
+                            {% endfor %}
+                        {% else %}
+                            <option value="">No contacts in database</option>
+                        {% endif %}
+                    </select>
+                </div>
+
+                <!-- Live Personalized Email Preview Card -->
+                <div style="background: #ffffff; border: 1px solid #cbd5e1; border-radius: 8px; padding: 1rem 1.25rem; margin-bottom: 1.25rem; box-shadow: var(--shadow-sm);">
+                    <div style="font-size: 0.8rem; font-weight: 700; text-transform: uppercase; color: #64748b; margin-bottom: 0.5rem;">
+                        ✉️ Live Email Preview for Selected Contact:
+                    </div>
+                    <div style="padding-bottom: 0.5rem; border-bottom: 1px solid #f1f5f9; font-size: 0.9rem;">
+                        <strong>Subject:</strong> <span id="preview-subject" style="color: #1e3a8a; font-weight: 600;">{{ rendered_subject }}</span>
+                    </div>
+                    <div id="preview-body-content" style="padding-top: 0.75rem; font-size: 0.875rem; line-height: 1.5; color: #334155; max-height: 220px; overflow-y: auto;">
+                        {{ rendered_html | safe }}
+                    </div>
+                </div>
+
+                <!-- Timing Choices for Individual -->
+                <div class="row">
+                    <!-- Choice A: Send Now -->
+                    <div class="col-half">
+                        <div style="background: #ffffff; border: 1px solid var(--border); border-radius: 8px; padding: 1.25rem; height: 100%; display: flex; flex-direction: column; justify-content: space-between;">
+                            <div>
+                                <strong style="font-size: 1rem; color: #059669;">⚡ Send Right Now to this HR</strong>
+                                <p style="font-size: 0.85rem; color: var(--text-muted); margin: 0.5rem 0 1rem 0;">
+                                    Dispatches email directly to this contact immediately.
+                                </p>
+                            </div>
+                            <button type="button" class="btn btn-success" style="width: 100%;" onclick="submitIndividual('now')">
+                                🚀 Send Now to Selected HR
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Choice B: Schedule Individual -->
+                    <div class="col-half">
+                        <div style="background: #ffffff; border: 1px solid var(--border); border-radius: 8px; padding: 1.25rem; height: 100%; display: flex; flex-direction: column; justify-content: space-between;">
+                            <div>
+                                <strong style="font-size: 1rem; color: #2563eb;">📅 Schedule for this HR</strong>
+                                <p style="font-size: 0.85rem; color: var(--text-muted); margin: 0.5rem 0 0.75rem 0;">
+                                    Pick date & time to send to this specific HR.
+                                </p>
+                                <div class="form-group" style="margin-bottom: 1rem;">
+                                    <input type="datetime-local" id="individual-datetime" class="form-control" style="font-size: 0.95rem;">
+                                </div>
+                            </div>
+                            <button type="button" class="btn btn-primary" style="width: 100%;" onclick="submitIndividual('schedule')">
+                                ⏰ Schedule for This HR
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Hidden Inputs to carry form values -->
+            <input type="hidden" name="timing_mode" id="hidden-timing-mode" value="now">
+            <input type="hidden" name="schedule_datetime" id="hidden-schedule-datetime" value="">
+        </div>
+    </div>
+</form>
+
+<script>
+function selectSendMode(mode) {
+    const cardBatch = document.getElementById("card-batch");
+    const cardIndiv = document.getElementById("card-individual");
+    const secBatch = document.getElementById("section-batch");
+    const secIndiv = document.getElementById("section-individual");
+    const radioBatch = document.getElementById("mode-batch");
+    const radioIndiv = document.getElementById("mode-individual");
+
+    if (mode === "batch") {
+        radioBatch.checked = true;
+        cardBatch.style.borderColor = "#2563eb";
+        cardBatch.style.backgroundColor = "#eff6ff";
+        cardIndiv.style.borderColor = "var(--border)";
+        cardIndiv.style.backgroundColor = "#ffffff";
+        secBatch.style.display = "block";
+        secIndiv.style.display = "none";
+    } else {
+        radioIndiv.checked = true;
+        cardIndiv.style.borderColor = "#2563eb";
+        cardIndiv.style.backgroundColor = "#eff6ff";
+        cardBatch.style.borderColor = "var(--border)";
+        cardBatch.style.backgroundColor = "#ffffff";
+        secBatch.style.display = "none";
+        secIndiv.style.display = "block";
+
+        // Trigger preview for currently selected dropdown contact
+        const selectEl = document.getElementById("individual-contact-select");
+        if (selectEl && selectEl.value) {
+            loadIndividualPreview(selectEl.value);
+        }
+    }
+}
+
+async function loadIndividualPreview(contactId) {
+    if (!contactId) return;
+    try {
+        const res = await fetch(`/api/contacts/${contactId}/preview`);
+        if (res.ok) {
+            const data = await res.json();
+            if (data.success) {
+                document.getElementById("preview-subject").textContent = data.subject;
+                document.getElementById("preview-body-content").innerHTML = data.html;
+            }
+        }
+    } catch (e) {
+        console.error("Preview fetch error:", e);
+    }
+}
+
+function submitBatch(timing) {
+    document.getElementById("hidden-timing-mode").value = timing;
+    if (timing === "schedule") {
+        const dtVal = document.getElementById("batch-datetime").value;
+        if (!dtVal) {
+            alert("Please pick a date and time to schedule the batch.");
+            document.getElementById("batch-datetime").focus();
+            return;
+        }
+        document.getElementById("hidden-schedule-datetime").value = dtVal;
+    }
+    document.getElementById("pipeline-form").submit();
+}
+
+function submitIndividual(timing) {
+    document.getElementById("hidden-timing-mode").value = timing;
+    const selectEl = document.getElementById("individual-contact-select");
+    if (!selectEl || !selectEl.value) {
+        alert("Please select an HR contact from the list.");
+        return;
+    }
+    if (timing === "schedule") {
+        const dtVal = document.getElementById("individual-datetime").value;
+        if (!dtVal) {
+            alert("Please pick a date and time to schedule for this contact.");
+            document.getElementById("individual-datetime").focus();
+            return;
+        }
+        document.getElementById("hidden-schedule-datetime").value = dtVal;
+    }
+    document.getElementById("pipeline-form").submit();
+}
+
+// Preset default scheduling date to Nov 9, 2026 at 09:00 AM
+document.addEventListener("DOMContentLoaded", () => {
+    const batchInput = document.getElementById("batch-datetime");
+    const indivInput = document.getElementById("individual-datetime");
+    const defaultVal = "2026-11-09T09:00";
+    if (batchInput) batchInput.value = defaultVal;
+    if (indivInput) indivInput.value = defaultVal;
+});
+</script>
+{% endblock %}
