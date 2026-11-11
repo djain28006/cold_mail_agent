@@ -14,9 +14,10 @@ __pycache__/
 *.db
 *.sqlite3
 
-# Uploads - keep resume and .gitkeep
-uploads/large_resume.pdf
-uploads/my_resume.pdf
+# User uploads & data
+uploads/*.pdf
+!uploads/sample_resume.pdf
+*.csv
 
 # Virtual environment
 venv/

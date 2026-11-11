@@ -57,26 +57,64 @@ def is_valid_email(email_str):
 
 def render_template_text(template_text, hr_name, company):
     """
-    Replaces {hr_name} and {company} placeholders safely.
-    Also handles common variations such as [Company Name], [Company], {company_name},
-    [HR Name], {name}, [Name], etc., case-insensitively.
+    Replaces {hr_name}, {first_name}, {last_name}, and {company} placeholders safely.
+    Handles variations such as:
+    - [First Name], {first_name}, {first name}, [firstname], [fname]
+    - [Last Name], {last_name}, {lastname}, [lname]
+    - [HR Name], {hr_name}, [Name], {name}, [Full Name], {full_name}
+    - [Company Name], {company_name}, [Company], {company}, [Organization]
+    Intelligently maps generic department contacts (e.g. 'Hiring Team', 'Careers')
+    to 'Team' so cold emails remain natural (e.g. 'Hi Team,' rather than 'Hi Hiring,').
     """
     if not template_text:
         return ""
-    name_val = (hr_name or "Team").strip()
+
+    # Parse and extract name parts cleanly
+    full_name = (hr_name or "Team").strip()
+    words = [w for w in full_name.split() if w]
+    prefixes = {'mr.', 'mr', 'ms.', 'ms', 'mrs.', 'mrs', 'dr.', 'dr', 'prof.', 'prof'}
+    if len(words) > 1 and words[0].lower() in prefixes:
+        effective_words = words[1:]
+    else:
+        effective_words = words
+
+    # Detect generic/team contact designations to produce natural greetings
+    generic_dept = {'hiring', 'recruitment', 'recruiting', 'talent', 'careers', 'hr', 'admin', 'jobs', 'people', 'staffing'}
+    if any(w.lower() in generic_dept for w in words):
+        first_name = "Team"
+        last_name = ""
+    elif effective_words:
+        first_name = effective_words[0].capitalize()
+        last_name = " ".join(w.capitalize() for w in effective_words[1:]) if len(effective_words) > 1 else ""
+    else:
+        first_name = "Team"
+        last_name = ""
+
     company_val = (company or "your team").strip()
 
-    # Match any {company}, [Company Name], [Company], {company_name}, <Company>, etc.
-    company_pattern = r'(\{|\[|<)\s*(?:company(?:\s*name)?|organization|firm)\s*(\}|\]|>)'
-    rendered = re.sub(company_pattern, company_val, template_text, flags=re.IGNORECASE)
+    rendered = template_text
 
-    # Match any {hr_name}, [HR Name], [name], {name}, <name>, etc.
-    name_pattern = r'(\{|\[|<)\s*(?:hr_name|hr\s*name|contact_name|candidate_name|name)\s*(\}|\]|>)'
-    rendered = re.sub(name_pattern, name_val, rendered, flags=re.IGNORECASE)
+    # Match any {company}, [Company Name], [Company], {company_name}, <Company>, etc.
+    company_pattern = r'(\{|\[|<)\s*(?:company(?:\s*name)?|organization|org|firm|business|startup|agency)\s*(\}|\]|>)'
+    rendered = re.sub(company_pattern, company_val, rendered, flags=re.IGNORECASE)
+
+    # Match any {first_name}, [First Name], [First_Name], [firstname], etc.
+    first_name_pattern = r'(\{|\[|<)\s*(?:first(?:_|\s*)?name|fname|given(?:_|\s*)?name)\s*(\}|\]|>)'
+    rendered = re.sub(first_name_pattern, first_name, rendered, flags=re.IGNORECASE)
+
+    # Match any {last_name}, [Last Name], [Last_Name], [lastname], etc.
+    last_name_pattern = r'(\{|\[|<)\s*(?:last(?:_|\s*)?name|lname|surname|family(?:_|\s*)?name)\s*(\}|\]|>)'
+    rendered = re.sub(last_name_pattern, last_name, rendered, flags=re.IGNORECASE)
+
+    # Match any {hr_name}, [HR Name], [Full Name], [name], {name}, <name>, etc.
+    name_pattern = r'(\{|\[|<)\s*(?:full(?:_|\s*)?name|hr(?:_|\s*)?name|contact(?:_|\s*)?name|candidate(?:_|\s*)?name|name)\s*(\}|\]|>)'
+    rendered = re.sub(name_pattern, full_name, rendered, flags=re.IGNORECASE)
 
     # Fallback replacements for exact tags
-    rendered = rendered.replace("{hr_name}", name_val)
-    rendered = rendered.replace("{company}", company_val)
+    rendered = rendered.replace("{hr_name}", full_name).replace("[HR Name]", full_name)
+    rendered = rendered.replace("{first_name}", first_name).replace("[First Name]", first_name)
+    rendered = rendered.replace("{last_name}", last_name).replace("[Last Name]", last_name)
+    rendered = rendered.replace("{company}", company_val).replace("[Company Name]", company_val)
 
     return rendered
 

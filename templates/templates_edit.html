@@ -23,7 +23,7 @@
                     <div class="form-group">
                         <label class="form-label">Subject Template:</label>
                         <input type="text" name="initial_subject" class="form-control" value="{{ initial_template.subject }}" required>
-                        <div class="form-help">Supported placeholder: <code>{company}</code></div>
+                        <div class="form-help">Supported placeholders: <code>[Company Name]</code> or <code>{company}</code>, <code>[First Name]</code> or <code>{first_name}</code></div>
                     </div>
 
                     <div class="form-group">
@@ -102,8 +102,9 @@
 
                                 <!-- Quick Placeholders -->
                                 <div class="rich-group">
-                                    <button type="button" class="rich-chip" onclick="insertPlaceholder('initial', '{hr_name}')" title="Insert HR Name placeholder">+ {hr_name}</button>
-                                    <button type="button" class="rich-chip" onclick="insertPlaceholder('initial', '{company}')" title="Insert Company placeholder">+ {company}</button>
+                                    <button type="button" class="rich-chip" onclick="insertPlaceholder('initial', '[First Name]')" title="Insert Contact's First Name (or 'Team' if generic)">+ [First Name]</button>
+                                    <button type="button" class="rich-chip" onclick="insertPlaceholder('initial', '[Company Name]')" title="Insert Company Name placeholder">+ [Company Name]</button>
+                                    <button type="button" class="rich-chip" onclick="insertPlaceholder('initial', '{hr_name}')" title="Insert Full HR Name placeholder">+ {hr_name}</button>
                                 </div>
 
                                 <!-- Quick Opt-Out Line -->
@@ -146,7 +147,7 @@
                     <div class="form-group">
                         <label class="form-label">Follow-Up Subject Template:</label>
                         <input type="text" name="follow_up_subject" class="form-control" value="{{ follow_up_template.subject }}" required>
-                        <div class="form-help">Supported placeholder: <code>{company}</code></div>
+                        <div class="form-help">Supported placeholders: <code>[Company Name]</code> or <code>{company}</code>, <code>[First Name]</code> or <code>{first_name}</code></div>
                     </div>
 
                     <div class="form-group">
@@ -216,8 +217,9 @@
 
                                 <!-- Quick Placeholders -->
                                 <div class="rich-group">
-                                    <button type="button" class="rich-chip" onclick="insertPlaceholder('follow_up', '{hr_name}')">+ {hr_name}</button>
-                                    <button type="button" class="rich-chip" onclick="insertPlaceholder('follow_up', '{company}')">+ {company}</button>
+                                    <button type="button" class="rich-chip" onclick="insertPlaceholder('follow_up', '[First Name]')" title="Insert Contact's First Name (or 'Team' if generic)">+ [First Name]</button>
+                                    <button type="button" class="rich-chip" onclick="insertPlaceholder('follow_up', '[Company Name]')" title="Insert Company Name placeholder">+ [Company Name]</button>
+                                    <button type="button" class="rich-chip" onclick="insertPlaceholder('follow_up', '{hr_name}')" title="Insert Full HR Name placeholder">+ {hr_name}</button>
                                 </div>
 
                                 <!-- Quick Opt-Out Line -->

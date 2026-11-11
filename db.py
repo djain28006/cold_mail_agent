@@ -67,7 +67,7 @@ def init_db():
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 contact_id INTEGER NULL,
                 recipient_email TEXT NOT NULL,
-                email_type TEXT NOT NULL,               -- 'test', 'initial', 'follow_up'
+                email_type TEXT NOT NULL,               -- 'test', 'initial', 'follow_up', 'reply', 'open'
                 status TEXT NOT NULL,                   -- 'success', 'failed', 'dry_run', 'warning', 'info'
                 message TEXT,
                 timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -85,6 +85,18 @@ def init_db():
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         """)
+
+        # Schema migrations for open tracking & reply detection
+        cursor.execute("PRAGMA table_info(contacts)")
+        cols = [r["name"] for r in cursor.fetchall()]
+        if "opened_at" not in cols:
+            cursor.execute("ALTER TABLE contacts ADD COLUMN opened_at TIMESTAMP NULL")
+        if "open_count" not in cols:
+            cursor.execute("ALTER TABLE contacts ADD COLUMN open_count INTEGER DEFAULT 0")
+        if "reply_snippet" not in cols:
+            cursor.execute("ALTER TABLE contacts ADD COLUMN reply_snippet TEXT NULL")
+        if "replied_at" not in cols:
+            cursor.execute("ALTER TABLE contacts ADD COLUMN replied_at TIMESTAMP NULL")
 
         # Default settings if not already present
         default_settings = {
@@ -304,6 +316,49 @@ def bulk_update_contacts(contact_ids, action):
         return count
 
 
+def record_email_open(contact_id):
+    """Increments open count and records the timestamp when an HR opens the email."""
+    with get_db() as conn:
+        cursor = conn.cursor()
+        now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        cursor.execute("""
+            UPDATE contacts 
+            SET open_count = COALESCE(open_count, 0) + 1, 
+                opened_at = ?, 
+                updated_at = CURRENT_TIMESTAMP 
+            WHERE id = ?
+        """, (now, contact_id))
+        conn.commit()
+
+
+def record_contact_reply(contact_id, snippet=None):
+    """Marks a contact as replied and records reply snippet and timestamp."""
+    with get_db() as conn:
+        cursor = conn.cursor()
+        now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        cursor.execute("""
+            UPDATE contacts 
+            SET replied = 1, 
+                replied_at = ?, 
+                reply_snippet = ?, 
+                updated_at = CURRENT_TIMESTAMP 
+            WHERE id = ?
+        """, (now, snippet, contact_id))
+        conn.commit()
+
+
+def get_sent_contact_emails():
+    """Returns list of contacts that have been sent an email and haven't replied yet."""
+    with get_db() as conn:
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT id, name, email, company, sent_at 
+            FROM contacts 
+            WHERE status = 'sent' AND replied = 0
+        """)
+        return cursor.fetchall()
+
+
 def reset_failed_contacts():
     with get_db() as conn:
         cursor = conn.cursor()
@@ -387,6 +442,9 @@ def get_stats():
         cursor.execute("SELECT COUNT(*) FROM contacts WHERE replied = 1")
         replied = cursor.fetchone()[0]
 
+        cursor.execute("SELECT COUNT(*) FROM contacts WHERE open_count > 0")
+        opened = cursor.fetchone()[0]
+
         cursor.execute("SELECT COUNT(*) FROM contacts WHERE do_not_contact = 1")
         dnc = cursor.fetchone()[0]
 
@@ -413,6 +471,7 @@ def get_stats():
         "failed": failed,
         "dry_run": dry_run,
         "replied": replied,
+        "opened": opened,
         "do_not_contact": dnc,
         "follow_up_due": follow_up_due,
         "follow_up_sent": follow_up_sent,
